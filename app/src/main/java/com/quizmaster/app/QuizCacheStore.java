@@ -45,6 +45,15 @@ public class QuizCacheStore {
         return entries;
     }
 
+    public static Entry find(Context context, String uri) {
+        for (Entry entry : getAll(context)) {
+            if (entry.uri.equals(uri)) {
+                return entry;
+            }
+        }
+        return null;
+    }
+
     public static void save(Context context, String uri, String displayName, String topic,
                              List<QuizQuestion> questions, String textCacheKey) {
         List<Entry> entries = getAll(context);

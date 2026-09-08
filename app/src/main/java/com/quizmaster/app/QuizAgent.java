@@ -35,6 +35,7 @@ public class QuizAgent {
     private static final String ANTHROPIC_VERSION = "2023-06-01";
     private static final int MAX_DOCUMENT_CHARS = 20000;
     private static final int MAX_CLEANUP_CHARS = 60000;
+    public static final int QUESTION_POOL_SIZE = 20;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -66,16 +67,17 @@ public class QuizAgent {
                 ? documentText.substring(0, MAX_DOCUMENT_CHARS)
                 : documentText;
 
-        String prompt = "Based only on the following text, generate exactly 10 multiple choice quiz questions. "
+        String prompt = "Based only on the following text, generate exactly " + QUESTION_POOL_SIZE
+                + " multiple choice quiz questions covering the text as thoroughly as possible. "
                 + "Each question must have exactly 4 answer choices with exactly one correct answer. "
-                + "Do not use any information outside the given text. "
+                + "Do not use any information outside the given text, and do not repeat the same question twice. "
                 + "Also come up with a short topic title (at most 6 words) summarizing what the text is about. "
                 + "Respond with ONLY a valid JSON object (no markdown, no commentary) with this shape: "
                 + "{\"topic\": string, \"questions\": [{\"question\": string, "
                 + "\"choices\": [string, string, string, string], \"correctIndex\": integer 0-3}, ...]}."
                 + "\n\nText:\n" + truncated;
 
-        String responseText = callClaude(apiKey, prompt, 3000);
+        String responseText = callClaude(apiKey, prompt, 8000);
         return parseQuiz(responseText);
     }
 

@@ -56,6 +56,7 @@ import java.util.concurrent.Executors;
 public class MainActivity extends AppCompatActivity {
 
     private static final int REDACT_VISIBLE_CHARS = 15;
+    private static final int QUESTIONS_PER_QUIZ = 10;
 
     private final ActivityResultLauncher<String[]> filePickerLauncher =
             registerForActivityResult(new ActivityResultContracts.OpenDocument(), this::onFilePicked);
@@ -310,6 +311,16 @@ public class MainActivity extends AppCompatActivity {
 
     private void generateQuiz() {
         String apiKey = ApiKeyStore.get(this);
+        String fileUriString = selectedFileUri.toString();
+        String fileDisplayName = selectedFileDisplayName;
+        Uri fileUri = selectedFileUri;
+
+        QuizCacheStore.Entry existing = QuizCacheStore.find(this, fileUriString);
+        if (existing != null) {
+            startQuizSession(existing.topic, existing.questions);
+            return;
+        }
+
         String mimeType = getContentResolver().getType(selectedFileUri);
         boolean isPdf = "application/pdf".equals(mimeType);
 
@@ -317,10 +328,6 @@ public class MainActivity extends AppCompatActivity {
         quizContainer.setVisibility(View.GONE);
         quizCompleteContainer.setVisibility(View.GONE);
         quizResultText.setText(R.string.generating_quiz);
-
-        String fileUriString = selectedFileUri.toString();
-        String fileDisplayName = selectedFileDisplayName;
-        Uri fileUri = selectedFileUri;
 
         if (!isPdf) {
             fileReadExecutor.execute(() -> {
@@ -427,7 +434,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void startQuizSession(String topic, List<QuizQuestion> questions) {
         currentTopic = topic;
-        currentQuestions = QuizRandomizer.randomize(questions);
+        currentQuestions = QuizRandomizer.pickAndRandomize(questions, QUESTIONS_PER_QUIZ);
         currentQuestionIndex = 0;
         score = 0;
 

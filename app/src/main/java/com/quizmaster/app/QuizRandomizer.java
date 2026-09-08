@@ -15,6 +15,18 @@ public class QuizRandomizer {
         return shuffled;
     }
 
+    public static List<QuizQuestion> pickAndRandomize(List<QuizQuestion> pool, int count) {
+        List<QuizQuestion> shuffledPool = new ArrayList<>(pool);
+        Collections.shuffle(shuffledPool);
+
+        int limit = Math.min(count, shuffledPool.size());
+        List<QuizQuestion> selected = new ArrayList<>();
+        for (int i = 0; i < limit; i++) {
+            selected.add(shuffleChoices(shuffledPool.get(i)));
+        }
+        return selected;
+    }
+
     private static QuizQuestion shuffleChoices(QuizQuestion question) {
         List<Integer> order = new ArrayList<>();
         for (int i = 0; i < question.choices.size(); i++) {
