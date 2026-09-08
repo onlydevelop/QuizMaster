@@ -411,6 +411,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
+
+    private static String toHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for (int i = 0; i < bytes.length; i++) {
+            int value = bytes[i] & 0xFF;
+            hexChars[i * 2] = HEX_DIGITS[value >>> 4];
+            hexChars[i * 2 + 1] = HEX_DIGITS[value & 0x0F];
+        }
+        return new String(hexChars);
+    }
+
     private String computeContentHash(Uri uri) throws IOException {
         try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -419,11 +431,7 @@ public class MainActivity extends AppCompatActivity {
             while ((read = inputStream.read(buffer)) != -1) {
                 digest.update(buffer, 0, read);
             }
-            StringBuilder hex = new StringBuilder();
-            for (byte b : digest.digest()) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
+            return toHex(digest.digest());
         } catch (NoSuchAlgorithmException e) {
             throw new IOException("SHA-256 not available", e);
         }

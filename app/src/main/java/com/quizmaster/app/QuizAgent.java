@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -110,7 +110,7 @@ public class QuizAgent {
             throw new IOException("Failed to build request", e);
         }
 
-        HttpURLConnection connection = (HttpURLConnection) new URL(API_URL).openConnection();
+        HttpURLConnection connection = (HttpURLConnection) URI.create(API_URL).toURL().openConnection();
         connection.setRequestMethod("POST");
         connection.setRequestProperty("x-api-key", apiKey);
         connection.setRequestProperty("anthropic-version", ANTHROPIC_VERSION);
