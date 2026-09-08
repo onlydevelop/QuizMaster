@@ -360,7 +360,7 @@ public class MainActivity extends AppCompatActivity {
                 String rawText = extractPdfText(fileUri);
                 runOnUiThread(() -> {
                     quizResultText.setText(R.string.cleaning_pdf_text);
-                    quizAgent.cleanDocumentText(apiKey, rawText, new QuizAgent.TextCleanupCallback() {
+                    quizAgent.cleanDocumentText(apiKey, rawText, new QuizAgent.Callback<String>() {
                         @Override
                         public void onSuccess(String cleanedText) {
                             DocumentTextCache.save(MainActivity.this, textCacheKey, cleanedText);
@@ -385,7 +385,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void runQuizGeneration(String apiKey, String documentText, String fileUriString, String fileDisplayName,
                                     String textCacheKey) {
-        quizAgent.generateQuiz(apiKey, documentText, new QuizAgent.Callback() {
+        quizAgent.generateQuiz(apiKey, documentText, new QuizAgent.Callback<QuizResult>() {
             @Override
             public void onSuccess(QuizResult result) {
                 QuizCacheStore.save(MainActivity.this, fileUriString, fileDisplayName,

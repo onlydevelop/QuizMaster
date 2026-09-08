@@ -15,18 +15,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class QuizAgent {
 
-    public interface Callback {
-        void onSuccess(QuizResult result);
-        void onError(Exception e);
-    }
-
-    public interface TextCleanupCallback {
-        void onSuccess(String cleanedText);
+    public interface Callback<T> {
+        void onSuccess(T result);
         void onError(Exception e);
     }
 
@@ -40,22 +36,19 @@ public class QuizAgent {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    public void generateQuiz(String apiKey, String documentText, Callback callback) {
-        executor.execute(() -> {
-            try {
-                QuizResult result = requestQuiz(apiKey, documentText);
-                mainHandler.post(() -> callback.onSuccess(result));
-            } catch (Exception e) {
-                mainHandler.post(() -> callback.onError(e));
-            }
-        });
+    public void generateQuiz(String apiKey, String documentText, Callback<QuizResult> callback) {
+        runAsync(() -> requestQuiz(apiKey, documentText), callback);
     }
 
-    public void cleanDocumentText(String apiKey, String rawText, TextCleanupCallback callback) {
+    public void cleanDocumentText(String apiKey, String rawText, Callback<String> callback) {
+        runAsync(() -> requestCleanup(apiKey, rawText), callback);
+    }
+
+    private <T> void runAsync(Callable<T> work, Callback<T> callback) {
         executor.execute(() -> {
             try {
-                String cleanedText = requestCleanup(apiKey, rawText);
-                mainHandler.post(() -> callback.onSuccess(cleanedText));
+                T result = work.call();
+                mainHandler.post(() -> callback.onSuccess(result));
             } catch (Exception e) {
                 mainHandler.post(() -> callback.onError(e));
             }
