@@ -2,8 +2,6 @@ package com.quizmaster.app;
 
 import android.content.Intent;
 import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -30,7 +28,6 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
-import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -38,9 +35,6 @@ import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.google.android.material.navigation.NavigationView;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -56,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
 
     private final ExecutorService fileReadExecutor = Executors.newSingleThreadExecutor();
     private QuizGenerator quizGenerator;
+    private ScoreSharer scoreSharer;
 
     private TextView statusText;
     private Button generateQuizButton;
@@ -98,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         quizGenerator = new QuizGenerator(this, new QuizAgent(), fileReadExecutor);
+        scoreSharer = new ScoreSharer(this);
 
         View contentRoot = findViewById(R.id.contentRoot);
         ViewCompat.setOnApplyWindowInsetsListener(contentRoot, (v, windowInsets) -> {
@@ -429,38 +425,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void shareScore() {
-        Uri screenshotUri = captureViewToUri(quizCompleteCaptureContainer);
-        if (screenshotUri == null) {
+        boolean shared = scoreSharer.share(quizCompleteCaptureContainer, lastQuizSummary);
+        if (!shared) {
             Toast.makeText(this, R.string.error_share_failed, Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        Intent shareIntent = new Intent(Intent.ACTION_SEND);
-        shareIntent.setType("image/png");
-        shareIntent.putExtra(Intent.EXTRA_STREAM, screenshotUri);
-        shareIntent.putExtra(Intent.EXTRA_TEXT, getString(R.string.share_score_text,
-                lastQuizSummary.score, lastQuizSummary.totalQuestions, lastQuizSummary.topic));
-        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        startActivity(Intent.createChooser(shareIntent, getString(R.string.share_score_chooser_title)));
-    }
-
-    private Uri captureViewToUri(View view) {
-        try {
-            Bitmap bitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.ARGB_8888);
-            Canvas canvas = new Canvas(bitmap);
-            view.draw(canvas);
-
-            File imagesDir = new File(getCacheDir(), "images");
-            imagesDir.mkdirs();
-            File imageFile = new File(imagesDir, "quiz_score.png");
-            try (FileOutputStream out = new FileOutputStream(imageFile)) {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-            }
-
-            return FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", imageFile);
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to capture score screenshot for sharing", e);
-            return null;
         }
     }
 
