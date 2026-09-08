@@ -59,11 +59,10 @@ public class QuizCacheStore {
         return null;
     }
 
-    public static void save(Context context, String contentKey, String uri, String displayName, String topic,
-                             List<QuizQuestion> questions) {
+    public static void save(Context context, PickedFile pickedFile, String topic, List<QuizQuestion> questions) {
         List<Entry> entries = getAll(context);
-        entries.removeIf(e -> e.contentKey.equals(contentKey));
-        entries.add(0, new Entry(contentKey, uri, displayName, topic, questions));
+        entries.removeIf(e -> e.contentKey.equals(pickedFile.contentKey));
+        entries.add(0, new Entry(pickedFile.contentKey, pickedFile.uri, pickedFile.displayName, topic, questions));
         persist(context, entries);
     }
 

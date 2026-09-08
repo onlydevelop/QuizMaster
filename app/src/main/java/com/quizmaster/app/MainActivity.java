@@ -342,12 +342,12 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            String finalContentKey = contentKey;
+            PickedFile pickedFile = new PickedFile(contentKey, fileUriString, fileDisplayName);
             boolean isPdf = "application/pdf".equals(getContentResolver().getType(fileUri));
             if (!isPdf) {
                 try {
                     String documentText = readFileText(fileUri);
-                    runOnUiThread(() -> requestQuestions(apiKey, documentText, finalContentKey, fileUriString, fileDisplayName));
+                    runOnUiThread(() -> requestQuestions(apiKey, documentText, pickedFile));
                 } catch (IOException e) {
                     runOnUiThread(() -> {
                         quizResultText.setText(getString(R.string.error_quiz_generation_failed, e.getMessage()));
@@ -359,7 +359,7 @@ public class MainActivity extends AppCompatActivity {
 
             String cachedText = DocumentTextCache.get(this, contentKey);
             if (cachedText != null) {
-                runOnUiThread(() -> requestQuestions(apiKey, cachedText, finalContentKey, fileUriString, fileDisplayName));
+                runOnUiThread(() -> requestQuestions(apiKey, cachedText, pickedFile));
                 return;
             }
 
@@ -371,8 +371,8 @@ public class MainActivity extends AppCompatActivity {
                     quizAgent.cleanDocumentText(apiKey, rawText, new QuizAgent.Callback<String>() {
                         @Override
                         public void onSuccess(String cleanedText) {
-                            DocumentTextCache.save(MainActivity.this, finalContentKey, cleanedText);
-                            requestQuestions(apiKey, cleanedText, finalContentKey, fileUriString, fileDisplayName);
+                            DocumentTextCache.save(MainActivity.this, pickedFile.contentKey, cleanedText);
+                            requestQuestions(apiKey, cleanedText, pickedFile);
                         }
 
                         @Override
@@ -391,13 +391,11 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void requestQuestions(String apiKey, String documentText, String contentKey, String fileUriString,
-                                   String fileDisplayName) {
+    private void requestQuestions(String apiKey, String documentText, PickedFile pickedFile) {
         quizAgent.generateQuiz(apiKey, documentText, new QuizAgent.Callback<QuizResult>() {
             @Override
             public void onSuccess(QuizResult result) {
-                QuizCacheStore.save(MainActivity.this, contentKey, fileUriString, fileDisplayName,
-                        result.topic, result.questions);
+                QuizCacheStore.save(MainActivity.this, pickedFile, result.topic, result.questions);
                 generateQuizButton.setEnabled(true);
                 startQuizSession(result.topic, result.questions);
             }
