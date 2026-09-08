@@ -37,19 +37,10 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.google.android.material.navigation.NavigationView;
-import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
-import com.tom_roush.pdfbox.pdmodel.PDDocument;
-import com.tom_roush.pdfbox.text.PDFTextStripper;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -63,8 +54,8 @@ public class MainActivity extends AppCompatActivity {
     private final ActivityResultLauncher<String[]> filePickerLauncher =
             registerForActivityResult(new ActivityResultContracts.OpenDocument(), this::onFilePicked);
 
-    private final QuizAgent quizAgent = new QuizAgent();
     private final ExecutorService fileReadExecutor = Executors.newSingleThreadExecutor();
+    private QuizGenerator quizGenerator;
 
     private TextView statusText;
     private Button generateQuizButton;
@@ -106,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        PDFBoxResourceLoader.init(getApplicationContext());
+        quizGenerator = new QuizGenerator(this, new QuizAgent(), fileReadExecutor);
 
         View contentRoot = findViewById(R.id.contentRoot);
         ViewCompat.setOnApplyWindowInsetsListener(contentRoot, (v, windowInsets) -> {
@@ -312,135 +303,36 @@ public class MainActivity extends AppCompatActivity {
 
     private void generateQuiz() {
         String apiKey = ApiKeyStore.get(this);
-        String fileUriString = selectedFileUri.toString();
-        String fileDisplayName = selectedFileDisplayName;
-        Uri fileUri = selectedFileUri;
 
         generateQuizButton.setEnabled(false);
         quizContainer.setVisibility(View.GONE);
         quizCompleteContainer.setVisibility(View.GONE);
         quizResultText.setText(R.string.generating_quiz);
 
-        fileReadExecutor.execute(() -> {
-            String contentKey;
-            try {
-                contentKey = computeContentHash(fileUri);
-            } catch (IOException e) {
-                runOnUiThread(() -> {
-                    quizResultText.setText(getString(R.string.error_quiz_generation_failed, e.getMessage()));
-                    generateQuizButton.setEnabled(true);
-                });
-                return;
-            }
-
-            QuizCacheStore.Entry existing = QuizCacheStore.find(this, contentKey);
-            if (existing != null) {
-                runOnUiThread(() -> {
-                    generateQuizButton.setEnabled(true);
-                    startQuizSession(existing.topic, existing.questions);
-                });
-                return;
-            }
-
-            PickedFile pickedFile = new PickedFile(contentKey, fileUriString, fileDisplayName);
-            boolean isPdf = "application/pdf".equals(getContentResolver().getType(fileUri));
-            if (!isPdf) {
-                try {
-                    String documentText = readFileText(fileUri);
-                    runOnUiThread(() -> requestQuestions(apiKey, documentText, pickedFile));
-                } catch (IOException e) {
-                    runOnUiThread(() -> {
-                        quizResultText.setText(getString(R.string.error_quiz_generation_failed, e.getMessage()));
-                        generateQuizButton.setEnabled(true);
-                    });
-                }
-                return;
-            }
-
-            String cachedText = DocumentTextCache.get(this, contentKey);
-            if (cachedText != null) {
-                runOnUiThread(() -> requestQuestions(apiKey, cachedText, pickedFile));
-                return;
-            }
-
-            try {
-                runOnUiThread(() -> quizResultText.setText(R.string.extracting_pdf_text));
-                String rawText = extractPdfText(fileUri);
-                runOnUiThread(() -> {
-                    quizResultText.setText(R.string.cleaning_pdf_text);
-                    quizAgent.cleanDocumentText(apiKey, rawText, new QuizAgent.Callback<String>() {
-                        @Override
-                        public void onSuccess(String cleanedText) {
-                            DocumentTextCache.save(MainActivity.this, pickedFile.contentKey, cleanedText);
-                            requestQuestions(apiKey, cleanedText, pickedFile);
-                        }
-
-                        @Override
-                        public void onError(Exception e) {
-                            quizResultText.setText(getString(R.string.error_quiz_generation_failed, e.getMessage()));
-                            generateQuizButton.setEnabled(true);
-                        }
-                    });
-                });
-            } catch (IOException e) {
-                runOnUiThread(() -> {
-                    quizResultText.setText(getString(R.string.error_pdf_extraction_failed, e.getMessage()));
-                    generateQuizButton.setEnabled(true);
-                });
-            }
-        });
-    }
-
-    private void requestQuestions(String apiKey, String documentText, PickedFile pickedFile) {
-        quizAgent.generateQuiz(apiKey, documentText, new QuizAgent.Callback<QuizResult>() {
+        quizGenerator.generate(apiKey, selectedFileUri, selectedFileDisplayName, new QuizGenerator.Listener() {
             @Override
-            public void onSuccess(QuizResult result) {
-                QuizCacheStore.save(MainActivity.this, pickedFile, result.topic, result.questions);
-                generateQuizButton.setEnabled(true);
-                startQuizSession(result.topic, result.questions);
+            public void onStatusUpdate(int statusStringRes) {
+                quizResultText.setText(statusStringRes);
             }
 
             @Override
-            public void onError(Exception e) {
-                quizResultText.setText(getString(R.string.error_quiz_generation_failed, e.getMessage()));
+            public void onSuccess(String topic, List<QuizQuestion> questions) {
+                generateQuizButton.setEnabled(true);
+                startQuizSession(topic, questions);
+            }
+
+            @Override
+            public void onGenerationError(String message) {
+                quizResultText.setText(getString(R.string.error_quiz_generation_failed, message));
+                generateQuizButton.setEnabled(true);
+            }
+
+            @Override
+            public void onExtractionError(String message) {
+                quizResultText.setText(getString(R.string.error_pdf_extraction_failed, message));
                 generateQuizButton.setEnabled(true);
             }
         });
-    }
-
-    private String extractPdfText(Uri uri) throws IOException {
-        try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
-            try (PDDocument document = PDDocument.load(inputStream)) {
-                PDFTextStripper stripper = new PDFTextStripper();
-                return stripper.getText(document);
-            }
-        }
-    }
-
-    private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
-
-    private static String toHex(byte[] bytes) {
-        char[] hexChars = new char[bytes.length * 2];
-        for (int i = 0; i < bytes.length; i++) {
-            int value = bytes[i] & 0xFF;
-            hexChars[i * 2] = HEX_DIGITS[value >>> 4];
-            hexChars[i * 2 + 1] = HEX_DIGITS[value & 0x0F];
-        }
-        return new String(hexChars);
-    }
-
-    private String computeContentHash(Uri uri) throws IOException {
-        try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = inputStream.read(buffer)) != -1) {
-                digest.update(buffer, 0, read);
-            }
-            return toHex(digest.digest());
-        } catch (NoSuchAlgorithmException e) {
-            throw new IOException("SHA-256 not available", e);
-        }
     }
 
     private void startQuizFromCache(QuizCacheStore.Entry entry) {
@@ -577,17 +469,5 @@ public class MainActivity extends AppCompatActivity {
         spannable.setSpan(new ForegroundColorSpan(color), text.length(), spannable.length(),
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         return spannable;
-    }
-
-    private String readFileText(Uri uri) throws IOException {
-        StringBuilder text = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(getContentResolver().openInputStream(uri), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                text.append(line).append('\n');
-            }
-        }
-        return text.toString();
     }
 }
