@@ -1,17 +1,20 @@
 package com.testmaster.app;
 
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -53,6 +56,10 @@ public class MainActivity extends AppCompatActivity {
     private Button generateQuizButton;
     private TextView quizResultText;
     private Uri selectedFileUri;
+    private String selectedFileDisplayName;
+
+    private TextView filesSectionTitle;
+    private GridLayout fileTilesGrid;
 
     private LinearLayout quizContainer;
     private LinearLayout quizCompleteContainer;
@@ -91,6 +98,9 @@ public class MainActivity extends AppCompatActivity {
         quizResultText = findViewById(R.id.quizResultText);
         generateQuizButton.setOnClickListener(v -> generateQuiz());
 
+        filesSectionTitle = findViewById(R.id.filesSectionTitle);
+        fileTilesGrid = findViewById(R.id.fileTilesGrid);
+
         quizContainer = findViewById(R.id.quizContainer);
         quizCompleteContainer = findViewById(R.id.quizCompleteContainer);
         quizCompleteCaptureContainer = findViewById(R.id.quizCompleteCaptureContainer);
@@ -109,6 +119,9 @@ public class MainActivity extends AppCompatActivity {
         nextQuestionButton = findViewById(R.id.btnNextQuestion);
         shareScoreButton = findViewById(R.id.btnShareScore);
         shareScoreButton.setOnClickListener(v -> shareScore());
+
+        Button backToHomeButton = findViewById(R.id.btnBackToHome);
+        backToHomeButton.setOnClickListener(v -> backToHome());
 
         quizOptionsGroup.setOnCheckedChangeListener((group, checkedId) ->
                 submitAnswerButton.setEnabled(!currentQuestionSubmitted && checkedId != -1));
@@ -171,12 +184,37 @@ public class MainActivity extends AppCompatActivity {
         if (uri == null) {
             return;
         }
+        try {
+            getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (SecurityException ignored) {
+            // Some providers don't support persistable permissions; re-picking will still work.
+        }
+
         selectedFileUri = uri;
+        selectedFileDisplayName = getDisplayName(uri);
         quizResultText.setText(null);
-        quizContainer.setVisibility(android.view.View.GONE);
-        quizCompleteContainer.setVisibility(android.view.View.GONE);
+        quizContainer.setVisibility(View.GONE);
+        quizCompleteContainer.setVisibility(View.GONE);
         currentQuestions = null;
         updateStatus();
+    }
+
+    private String getDisplayName(Uri uri) {
+        String name = uri.getLastPathSegment();
+        try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (index != -1) {
+                    String displayName = cursor.getString(index);
+                    if (displayName != null) {
+                        name = displayName;
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            // Fall back to the last path segment computed above.
+        }
+        return name;
     }
 
     private void updateStatus() {
@@ -190,6 +228,38 @@ public class MainActivity extends AppCompatActivity {
         } else {
             statusText.setText(null);
         }
+
+        refreshFileTiles();
+    }
+
+    private void refreshFileTiles() {
+        List<QuizCacheStore.Entry> entries = QuizCacheStore.getAll(this);
+        fileTilesGrid.removeAllViews();
+
+        boolean hasEntries = !entries.isEmpty();
+        filesSectionTitle.setVisibility(hasEntries ? View.VISIBLE : View.GONE);
+        fileTilesGrid.setVisibility(hasEntries ? View.VISIBLE : View.GONE);
+
+        for (QuizCacheStore.Entry entry : entries) {
+            Button tile = new Button(this);
+            tile.setText(entry.displayName);
+            tile.setAllCaps(false);
+            tile.setMaxLines(3);
+            tile.setTextSize(12f);
+
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+            params.width = dpToPx(100);
+            params.height = dpToPx(80);
+            params.setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4));
+            tile.setLayoutParams(params);
+
+            tile.setOnClickListener(v -> startQuizFromCache(entry));
+            fileTilesGrid.addView(tile);
+        }
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
     private void generateQuiz() {
@@ -201,9 +271,12 @@ public class MainActivity extends AppCompatActivity {
         }
 
         generateQuizButton.setEnabled(false);
-        quizContainer.setVisibility(android.view.View.GONE);
-        quizCompleteContainer.setVisibility(android.view.View.GONE);
+        quizContainer.setVisibility(View.GONE);
+        quizCompleteContainer.setVisibility(View.GONE);
         quizResultText.setText(R.string.generating_quiz);
+
+        String fileUriString = selectedFileUri.toString();
+        String fileDisplayName = selectedFileDisplayName;
 
         fileReadExecutor.execute(() -> {
             try {
@@ -211,14 +284,10 @@ public class MainActivity extends AppCompatActivity {
                 quizAgent.generateQuiz(apiKey, documentText, new QuizAgent.Callback() {
                     @Override
                     public void onSuccess(QuizResult result) {
-                        currentQuestions = result.questions;
-                        currentTopic = result.topic;
-                        currentQuestionIndex = 0;
-                        score = 0;
-                        quizResultText.setText(null);
-                        quizContainer.setVisibility(View.VISIBLE);
+                        QuizCacheStore.save(MainActivity.this, fileUriString, fileDisplayName,
+                                result.topic, result.questions);
                         generateQuizButton.setEnabled(true);
-                        showQuestion(currentQuestionIndex);
+                        startQuizSession(result.topic, result.questions);
                     }
 
                     @Override
@@ -234,6 +303,27 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
+    }
+
+    private void startQuizFromCache(QuizCacheStore.Entry entry) {
+        selectedFileUri = Uri.parse(entry.uri);
+        selectedFileDisplayName = entry.displayName;
+        startQuizSession(entry.topic, entry.questions);
+    }
+
+    private void startQuizSession(String topic, List<QuizQuestion> questions) {
+        currentTopic = topic;
+        currentQuestions = QuizRandomizer.randomize(questions);
+        currentQuestionIndex = 0;
+        score = 0;
+
+        quizResultText.setText(null);
+        quizCompleteContainer.setVisibility(View.GONE);
+        filesSectionTitle.setVisibility(View.GONE);
+        fileTilesGrid.setVisibility(View.GONE);
+        quizContainer.setVisibility(View.VISIBLE);
+
+        showQuestion(currentQuestionIndex);
     }
 
     private void showQuestion(int index) {
@@ -302,6 +392,11 @@ public class MainActivity extends AppCompatActivity {
         scoreStarView.setScore(score, lastTotalQuestions);
         quizCompleteContainer.setVisibility(View.VISIBLE);
         currentQuestions = null;
+    }
+
+    private void backToHome() {
+        quizCompleteContainer.setVisibility(View.GONE);
+        updateStatus();
     }
 
     private void shareScore() {

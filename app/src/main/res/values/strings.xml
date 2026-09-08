@@ -24,4 +24,6 @@
     <string name="share_score_text">I scored %1$d/%2$d on the TestMaster quiz on \"%3$s\"!</string>
     <string name="share_score_chooser_title">Share your score</string>
     <string name="error_share_failed">Failed to prepare screenshot for sharing.</string>
+    <string name="back_to_home">Back to Home</string>
+    <string name="previous_quizzes">Previous Quizzes</string>
 </resources>
