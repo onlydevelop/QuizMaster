@@ -496,9 +496,9 @@ public class MainActivity extends AppCompatActivity {
             RadioButton button = quizOptionButtons[i];
             button.setEnabled(false);
             if (i == question.correctIndex) {
-                button.setText(withSuffix(question.choices.get(i), " ✓", Color.parseColor("#2E7D32")));
+                button.setText(withSuffix(question.choices.get(i), " ✓", ContextCompat.getColor(this, R.color.colorCorrect)));
             } else if (i == selectedIndex) {
-                button.setText(withSuffix(question.choices.get(i), " ✗", Color.parseColor("#C62828")));
+                button.setText(withSuffix(question.choices.get(i), " ✗", ContextCompat.getColor(this, R.color.colorIncorrect)));
             }
         }
 

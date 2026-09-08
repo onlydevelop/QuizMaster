@@ -2,4 +2,6 @@
 <resources>
     <color name="colorViolet">#7B1FA2</color>
     <color name="colorVioletLight">#D9B3E8</color>
+    <color name="colorCorrect">#2E7D32</color>
+    <color name="colorIncorrect">#C62828</color>
 </resources>

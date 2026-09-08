@@ -10,10 +10,12 @@ import android.graphics.Shader;
 import android.util.AttributeSet;
 import android.view.View;
 
+import androidx.core.content.ContextCompat;
+
 public class ScoreStarView extends View {
 
-    private static final int COLOR_RED = Color.parseColor("#C62828");
-    private static final int COLOR_GREEN = Color.parseColor("#2E7D32");
+    private final int colorIncorrect;
+    private final int colorCorrect;
 
     private int score;
     private int totalQuestions = 10;
@@ -23,6 +25,8 @@ public class ScoreStarView extends View {
 
     public ScoreStarView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        colorIncorrect = ContextCompat.getColor(context, R.color.colorIncorrect);
+        colorCorrect = ContextCompat.getColor(context, R.color.colorCorrect);
         textPaint.setColor(Color.WHITE);
         textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setFakeBoldText(true);
@@ -47,7 +51,7 @@ public class ScoreStarView extends View {
 
         int clampedScore = Math.max(1, Math.min(totalQuestions, score));
         float fraction = totalQuestions > 1 ? (clampedScore - 1) / (float) (totalQuestions - 1) : 1f;
-        int color = interpolateColor(COLOR_RED, COLOR_GREEN, fraction);
+        int color = interpolateColor(colorIncorrect, colorCorrect, fraction);
 
         starPaint.setStyle(Paint.Style.FILL);
         starPaint.setShader(new LinearGradient(0, 0, w, h, lighten(color), color, Shader.TileMode.CLAMP));
