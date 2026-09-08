@@ -3,4 +3,7 @@
     <item
         android:id="@+id/menu_upload_file"
         android:title="@string/menu_upload_file" />
+    <item
+        android:id="@+id/menu_api_key"
+        android:title="@string/menu_api_key" />
 </menu>

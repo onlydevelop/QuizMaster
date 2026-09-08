@@ -3,8 +3,12 @@ ACTIVITY := $(APP_ID)/.MainActivity
 GRADLE := ./gradlew
 
 ANDROID_HOME ?= $(HOME)/Library/Android/sdk
+JAVA_HOME ?= /Library/Java/JavaVirtualMachines/jdk-21.0.10.jdk/Contents/Home
 EMULATOR := $(ANDROID_HOME)/emulator/emulator
 AVD_NAME := simulator_api34
+
+export ANDROID_HOME
+export JAVA_HOME
 
 .PHONY: build install run stop uninstall logcat devices clean emulator run-emulator
 
