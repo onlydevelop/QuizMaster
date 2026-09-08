@@ -20,12 +20,14 @@ public class QuizCacheStore {
         public final String displayName;
         public final String topic;
         public final List<QuizQuestion> questions;
+        public final String textCacheKey;
 
-        public Entry(String uri, String displayName, String topic, List<QuizQuestion> questions) {
+        public Entry(String uri, String displayName, String topic, List<QuizQuestion> questions, String textCacheKey) {
             this.uri = uri;
             this.displayName = displayName;
             this.topic = topic;
             this.questions = questions;
+            this.textCacheKey = textCacheKey;
         }
     }
 
@@ -43,10 +45,11 @@ public class QuizCacheStore {
         return entries;
     }
 
-    public static void save(Context context, String uri, String displayName, String topic, List<QuizQuestion> questions) {
+    public static void save(Context context, String uri, String displayName, String topic,
+                             List<QuizQuestion> questions, String textCacheKey) {
         List<Entry> entries = getAll(context);
         entries.removeIf(e -> e.uri.equals(uri));
-        entries.add(0, new Entry(uri, displayName, topic, questions));
+        entries.add(0, new Entry(uri, displayName, topic, questions, textCacheKey));
 
         JSONArray array = new JSONArray();
         try {
@@ -91,6 +94,7 @@ public class QuizCacheStore {
         json.put("displayName", entry.displayName);
         json.put("topic", entry.topic);
         json.put("questions", questionsJson);
+        json.put("textCacheKey", entry.textCacheKey);
         return json;
     }
 
@@ -106,7 +110,8 @@ public class QuizCacheStore {
             }
             questions.add(new QuizQuestion(qJson.getString("question"), choices, qJson.getInt("correctIndex")));
         }
-        return new Entry(json.getString("uri"), json.getString("displayName"), json.getString("topic"), questions);
+        return new Entry(json.getString("uri"), json.getString("displayName"), json.getString("topic"), questions,
+                json.optString("textCacheKey", null));
     }
 
     private static SharedPreferences getPrefs(Context context) {

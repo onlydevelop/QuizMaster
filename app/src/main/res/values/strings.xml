@@ -12,7 +12,9 @@
     <string name="error_no_api_key">Please set your Anthropic API key.</string>
     <string name="generate_quiz">Generate Quiz</string>
     <string name="generating_quiz">Generating quiz…</string>
-    <string name="error_pdf_not_supported">PDF files are not supported yet. Please choose a text file.</string>
+    <string name="extracting_pdf_text">Extracting text from PDF…</string>
+    <string name="cleaning_pdf_text">Cleaning up extracted text…</string>
+    <string name="error_pdf_extraction_failed">Failed to extract text from PDF: %1$s</string>
     <string name="error_quiz_generation_failed">Failed to generate quiz: %1$s</string>
     <string name="submit">Submit</string>
     <string name="next">Next</string>

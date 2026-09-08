@@ -25,10 +25,16 @@ public class QuizAgent {
         void onError(Exception e);
     }
 
+    public interface TextCleanupCallback {
+        void onSuccess(String cleanedText);
+        void onError(Exception e);
+    }
+
     private static final String API_URL = "https://api.anthropic.com/v1/messages";
     private static final String MODEL = "claude-haiku-4-5-20251001";
     private static final String ANTHROPIC_VERSION = "2023-06-01";
     private static final int MAX_DOCUMENT_CHARS = 20000;
+    private static final int MAX_CLEANUP_CHARS = 60000;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -38,6 +44,17 @@ public class QuizAgent {
             try {
                 QuizResult result = requestQuiz(apiKey, documentText);
                 mainHandler.post(() -> callback.onSuccess(result));
+            } catch (Exception e) {
+                mainHandler.post(() -> callback.onError(e));
+            }
+        });
+    }
+
+    public void cleanDocumentText(String apiKey, String rawText, TextCleanupCallback callback) {
+        executor.execute(() -> {
+            try {
+                String cleanedText = requestCleanup(apiKey, rawText);
+                mainHandler.post(() -> callback.onSuccess(cleanedText));
             } catch (Exception e) {
                 mainHandler.post(() -> callback.onError(e));
             }
@@ -58,6 +75,25 @@ public class QuizAgent {
                 + "\"choices\": [string, string, string, string], \"correctIndex\": integer 0-3}, ...]}."
                 + "\n\nText:\n" + truncated;
 
+        String responseText = callClaude(apiKey, prompt, 3000);
+        return parseQuiz(responseText);
+    }
+
+    private String requestCleanup(String apiKey, String rawText) throws IOException {
+        String truncated = rawText.length() > MAX_CLEANUP_CHARS
+                ? rawText.substring(0, MAX_CLEANUP_CHARS)
+                : rawText;
+
+        String prompt = "The following text was extracted from a PDF and may contain page headers and footers, "
+                + "page numbers, repeated boilerplate, image captions or placeholders, broken line wraps, and "
+                + "other layout noise. Extract and return ONLY the main body text, cleaned up and in natural "
+                + "reading order. Do not summarize, translate, or add any commentary - return the cleaned "
+                + "original text itself, with the noise removed.\n\nRaw extracted text:\n" + truncated;
+
+        return callClaude(apiKey, prompt, 4096).trim();
+    }
+
+    private String callClaude(String apiKey, String prompt, int maxTokens) throws IOException {
         JSONObject body;
         try {
             JSONObject message = new JSONObject()
@@ -65,7 +101,7 @@ public class QuizAgent {
                     .put("content", prompt);
             body = new JSONObject()
                     .put("model", MODEL)
-                    .put("max_tokens", 3000)
+                    .put("max_tokens", maxTokens)
                     .put("temperature", 0)
                     .put("messages", new JSONArray().put(message));
         } catch (Exception e) {
@@ -92,7 +128,24 @@ public class QuizAgent {
             throw new IOException("Anthropic API error (" + status + "): " + responseBody);
         }
 
-        return parseQuiz(responseBody);
+        return extractResponseText(responseBody);
+    }
+
+    private String extractResponseText(String responseBody) throws IOException {
+        try {
+            JSONObject response = new JSONObject(responseBody);
+            JSONArray content = response.getJSONArray("content");
+            StringBuilder text = new StringBuilder();
+            for (int i = 0; i < content.length(); i++) {
+                JSONObject block = content.getJSONObject(i);
+                if ("text".equals(block.optString("type"))) {
+                    text.append(block.getString("text"));
+                }
+            }
+            return text.toString();
+        } catch (Exception e) {
+            throw new IOException("Failed to parse Claude response: " + e.getMessage(), e);
+        }
     }
 
     private String readStream(InputStream inputStream) {
@@ -105,19 +158,9 @@ public class QuizAgent {
         }
     }
 
-    private QuizResult parseQuiz(String responseBody) throws IOException {
+    private QuizResult parseQuiz(String responseText) throws IOException {
         try {
-            JSONObject response = new JSONObject(responseBody);
-            JSONArray content = response.getJSONArray("content");
-            StringBuilder text = new StringBuilder();
-            for (int i = 0; i < content.length(); i++) {
-                JSONObject block = content.getJSONObject(i);
-                if ("text".equals(block.optString("type"))) {
-                    text.append(block.getString("text"));
-                }
-            }
-
-            JSONObject quizJson = new JSONObject(extractJsonObject(text.toString()));
+            JSONObject quizJson = new JSONObject(extractJsonObject(responseText));
             String topic = quizJson.getString("topic");
             JSONArray questionsJson = quizJson.getJSONArray("questions");
 
