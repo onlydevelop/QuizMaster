@@ -1,7 +1,6 @@
 package com.quizmaster.app;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -22,25 +21,16 @@ public class DocumentTextCache {
         } catch (JSONException e) {
             throw new RuntimeException("Failed to cache extracted document text", e);
         }
-        getPrefs(context).edit().putString(KEY_CACHE, cache.toString()).apply();
+        JsonBlobStore.write(context, PREFS_FILE, KEY_CACHE, cache);
     }
 
     public static void delete(Context context, String uri) {
         JSONObject cache = getCache(context);
         cache.remove(uri);
-        getPrefs(context).edit().putString(KEY_CACHE, cache.toString()).apply();
+        JsonBlobStore.write(context, PREFS_FILE, KEY_CACHE, cache);
     }
 
     private static JSONObject getCache(Context context) {
-        String json = getPrefs(context).getString(KEY_CACHE, "{}");
-        try {
-            return new JSONObject(json);
-        } catch (JSONException e) {
-            return new JSONObject();
-        }
-    }
-
-    private static SharedPreferences getPrefs(Context context) {
-        return context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
+        return JsonBlobStore.readObject(context, PREFS_FILE, KEY_CACHE);
     }
 }

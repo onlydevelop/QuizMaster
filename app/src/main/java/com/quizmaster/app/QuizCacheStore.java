@@ -1,7 +1,6 @@
 package com.quizmaster.app;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -34,14 +33,13 @@ public class QuizCacheStore {
 
     public static List<Entry> getAll(Context context) {
         List<Entry> entries = new ArrayList<>();
-        String json = getPrefs(context).getString(KEY_CACHE, "[]");
-        try {
-            JSONArray array = new JSONArray(json);
-            for (int i = 0; i < array.length(); i++) {
+        JSONArray array = JsonBlobStore.readArray(context, PREFS_FILE, KEY_CACHE);
+        for (int i = 0; i < array.length(); i++) {
+            try {
                 entries.add(parseEntry(array.getJSONObject(i)));
+            } catch (JSONException ignored) {
+                // Corrupted entry; skip it.
             }
-        } catch (JSONException ignored) {
-            // Corrupted cache; treat as empty.
         }
         return entries;
     }
@@ -60,23 +58,16 @@ public class QuizCacheStore {
         List<Entry> entries = getAll(context);
         entries.removeIf(e -> e.uri.equals(uri));
         entries.add(0, new Entry(uri, displayName, topic, questions, textCacheKey));
-
-        JSONArray array = new JSONArray();
-        try {
-            for (Entry e : entries) {
-                array.put(toJson(e));
-            }
-        } catch (JSONException e) {
-            throw new RuntimeException("Failed to serialize quiz cache", e);
-        }
-
-        getPrefs(context).edit().putString(KEY_CACHE, array.toString()).apply();
+        persist(context, entries);
     }
 
     public static void delete(Context context, String uri) {
         List<Entry> entries = getAll(context);
         entries.removeIf(e -> e.uri.equals(uri));
+        persist(context, entries);
+    }
 
+    private static void persist(Context context, List<Entry> entries) {
         JSONArray array = new JSONArray();
         try {
             for (Entry e : entries) {
@@ -85,8 +76,7 @@ public class QuizCacheStore {
         } catch (JSONException e) {
             throw new RuntimeException("Failed to serialize quiz cache", e);
         }
-
-        getPrefs(context).edit().putString(KEY_CACHE, array.toString()).apply();
+        JsonBlobStore.write(context, PREFS_FILE, KEY_CACHE, array);
     }
 
     private static JSONObject toJson(Entry entry) throws JSONException {
@@ -122,9 +112,5 @@ public class QuizCacheStore {
         }
         return new Entry(json.getString("uri"), json.getString("displayName"), json.getString("topic"), questions,
                 json.optString("textCacheKey", null));
-    }
-
-    private static SharedPreferences getPrefs(Context context) {
-        return context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
     }
 }
