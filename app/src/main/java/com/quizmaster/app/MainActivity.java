@@ -93,8 +93,7 @@ public class MainActivity extends AppCompatActivity {
     private int currentQuestionIndex;
     private boolean currentQuestionSubmitted;
     private int score;
-    private int lastTotalQuestions;
-    private String lastTopic;
+    private QuizSummary lastQuizSummary;
 
     @Override
     protected void onResume() {
@@ -526,11 +525,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void finishQuiz() {
-        lastTotalQuestions = currentQuestions.size();
-        lastTopic = currentTopic;
+        lastQuizSummary = new QuizSummary(currentTopic, score, currentQuestions.size());
         quizContainer.setVisibility(View.GONE);
         quizTopicText.setText(getString(R.string.quiz_topic, currentTopic));
-        scoreStarView.setScore(score, lastTotalQuestions);
+        scoreStarView.setScore(lastQuizSummary.score, lastQuizSummary.totalQuestions);
         quizCompleteContainer.setVisibility(View.VISIBLE);
         currentQuestions = null;
     }
@@ -550,7 +548,8 @@ public class MainActivity extends AppCompatActivity {
         Intent shareIntent = new Intent(Intent.ACTION_SEND);
         shareIntent.setType("image/png");
         shareIntent.putExtra(Intent.EXTRA_STREAM, screenshotUri);
-        shareIntent.putExtra(Intent.EXTRA_TEXT, getString(R.string.share_score_text, score, lastTotalQuestions, lastTopic));
+        shareIntent.putExtra(Intent.EXTRA_TEXT, getString(R.string.share_score_text,
+                lastQuizSummary.score, lastQuizSummary.totalQuestions, lastQuizSummary.topic));
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(Intent.createChooser(shareIntent, getString(R.string.share_score_chooser_title)));
     }
