@@ -60,6 +60,22 @@ public class QuizCacheStore {
         getPrefs(context).edit().putString(KEY_CACHE, array.toString()).apply();
     }
 
+    public static void delete(Context context, String uri) {
+        List<Entry> entries = getAll(context);
+        entries.removeIf(e -> e.uri.equals(uri));
+
+        JSONArray array = new JSONArray();
+        try {
+            for (Entry e : entries) {
+                array.put(toJson(e));
+            }
+        } catch (JSONException e) {
+            throw new RuntimeException("Failed to serialize quiz cache", e);
+        }
+
+        getPrefs(context).edit().putString(KEY_CACHE, array.toString()).apply();
+    }
+
     private static JSONObject toJson(Entry entry) throws JSONException {
         JSONArray questionsJson = new JSONArray();
         for (QuizQuestion q : entry.questions) {

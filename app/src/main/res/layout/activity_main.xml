@@ -6,6 +6,7 @@
     android:layout_height="match_parent">
 
     <LinearLayout
+        android:id="@+id/contentRoot"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
@@ -15,7 +16,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorPrimary"
-            app:titleTextColor="@android:color/white" />
+            app:titleTextColor="@color/colorViolet" />
 
         <TextView
             android:id="@+id/statusText"
@@ -35,6 +36,8 @@
             android:layout_gravity="center"
             android:layout_marginTop="16dp"
             android:enabled="false"
+            android:backgroundTint="@color/button_background"
+            android:textColor="@android:color/white"
             android:text="@string/generate_quiz" />
 
         <ScrollView
@@ -54,6 +57,7 @@
                     android:layout_height="wrap_content"
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"
+                    android:textColor="@color/colorViolet"
                     android:textSize="14sp" />
 
                 <TextView
@@ -64,6 +68,7 @@
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"
                     android:text="@string/previous_quizzes"
+                    android:textColor="@color/colorViolet"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:visibility="gone" />
@@ -102,6 +107,7 @@
                             android:layout_height="wrap_content"
                             android:gravity="center"
                             android:text="@string/quiz_complete_title"
+                            android:textColor="@color/colorViolet"
                             android:textSize="28sp"
                             android:textStyle="bold" />
 
@@ -111,6 +117,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
                             android:gravity="center"
+                            android:textColor="@color/colorViolet"
                             android:textSize="16sp" />
 
                         <com.quizmaster.app.ScoreStarView
@@ -126,6 +133,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="24dp"
+                        android:backgroundTint="@color/button_background"
+                        android:textColor="@android:color/white"
                         android:text="@string/share_score" />
 
                     <Button
@@ -133,6 +142,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
+                        android:backgroundTint="@color/button_background"
+                        android:textColor="@android:color/white"
                         android:text="@string/back_to_home" />
 
                 </LinearLayout>
@@ -151,6 +162,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:gravity="center"
+                        android:textColor="@color/colorViolet"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -159,6 +171,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
+                        android:textColor="@color/colorViolet"
                         android:textSize="18sp"
                         android:textStyle="bold" />
 
@@ -173,24 +186,28 @@
                             android:id="@+id/quizOption0"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:textColor="@color/colorViolet"
                             android:textSize="16sp" />
 
                         <RadioButton
                             android:id="@+id/quizOption1"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:textColor="@color/colorViolet"
                             android:textSize="16sp" />
 
                         <RadioButton
                             android:id="@+id/quizOption2"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:textColor="@color/colorViolet"
                             android:textSize="16sp" />
 
                         <RadioButton
                             android:id="@+id/quizOption3"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:textColor="@color/colorViolet"
                             android:textSize="16sp" />
 
                     </RadioGroup>
@@ -208,6 +225,8 @@
                             android:layout_weight="1"
                             android:layout_marginEnd="8dp"
                             android:enabled="false"
+                            android:backgroundTint="@color/button_background"
+                            android:textColor="@android:color/white"
                             android:text="@string/submit" />
 
                         <Button
@@ -217,6 +236,8 @@
                             android:layout_weight="1"
                             android:layout_marginStart="8dp"
                             android:enabled="false"
+                            android:backgroundTint="@color/button_background"
+                            android:textColor="@android:color/white"
                             android:text="@string/next" />
 
                     </LinearLayout>

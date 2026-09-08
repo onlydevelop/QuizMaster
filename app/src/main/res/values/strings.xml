@@ -26,4 +26,7 @@
     <string name="error_share_failed">Failed to prepare screenshot for sharing.</string>
     <string name="back_to_home">Back to Home</string>
     <string name="previous_quizzes">Previous Quizzes</string>
+    <string name="delete_quiz_title">Delete quiz?</string>
+    <string name="delete_quiz_message">Remove the cached quiz for \"%1$s\"?</string>
+    <string name="delete">Delete</string>
 </resources>

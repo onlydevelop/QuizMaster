@@ -5,6 +5,7 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
@@ -27,7 +28,11 @@ import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.google.android.material.navigation.NavigationView;
@@ -92,6 +97,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        View contentRoot = findViewById(R.id.contentRoot);
+        ViewCompat.setOnApplyWindowInsetsListener(contentRoot, (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            v.setPadding(insets.left, insets.top, insets.right, insets.bottom);
+            return WindowInsetsCompat.CONSUMED;
+        });
 
         statusText = findViewById(R.id.statusText);
         generateQuizButton = findViewById(R.id.btnGenerateQuiz);
@@ -246,6 +259,12 @@ public class MainActivity extends AppCompatActivity {
             tile.setAllCaps(false);
             tile.setMaxLines(3);
             tile.setTextSize(12f);
+            tile.setTextColor(Color.WHITE);
+
+            GradientDrawable tileBackground = new GradientDrawable();
+            tileBackground.setColor(ContextCompat.getColor(this, R.color.colorViolet));
+            tileBackground.setCornerRadius(dpToPx(8));
+            tile.setBackground(tileBackground);
 
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
             params.width = dpToPx(100);
@@ -254,8 +273,24 @@ public class MainActivity extends AppCompatActivity {
             tile.setLayoutParams(params);
 
             tile.setOnClickListener(v -> startQuizFromCache(entry));
+            tile.setOnLongClickListener(v -> {
+                confirmDeleteCachedQuiz(entry);
+                return true;
+            });
             fileTilesGrid.addView(tile);
         }
+    }
+
+    private void confirmDeleteCachedQuiz(QuizCacheStore.Entry entry) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.delete_quiz_title)
+                .setMessage(getString(R.string.delete_quiz_message, entry.displayName))
+                .setPositiveButton(R.string.delete, (dialog, which) -> {
+                    QuizCacheStore.delete(this, entry.uri);
+                    refreshFileTiles();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     private int dpToPx(int dp) {
