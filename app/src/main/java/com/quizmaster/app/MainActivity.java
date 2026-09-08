@@ -74,11 +74,7 @@ public class MainActivity extends AppCompatActivity {
     private Button nextQuestionButton;
     private Button shareScoreButton;
 
-    private List<QuizQuestion> currentQuestions;
-    private String currentTopic;
-    private int currentQuestionIndex;
-    private boolean currentQuestionSubmitted;
-    private int score;
+    private QuizSession quizSession;
     private QuizSummary lastQuizSummary;
 
     @Override
@@ -135,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
         backToHomeButton.setOnClickListener(v -> backToHome());
 
         quizOptionsGroup.setOnCheckedChangeListener((group, checkedId) ->
-                submitAnswerButton.setEnabled(!currentQuestionSubmitted && checkedId != -1));
+                submitAnswerButton.setEnabled(!quizSession.isSubmitted() && checkedId != -1));
         submitAnswerButton.setOnClickListener(v -> submitAnswer());
         nextQuestionButton.setOnClickListener(v -> goToNextQuestion());
 
@@ -207,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
         quizResultText.setText(null);
         quizContainer.setVisibility(View.GONE);
         quizCompleteContainer.setVisibility(View.GONE);
-        currentQuestions = null;
+        quizSession = null;
         updateStatus();
     }
 
@@ -338,10 +334,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startQuizSession(String topic, List<QuizQuestion> questions) {
-        currentTopic = topic;
-        currentQuestions = QuizRandomizer.pickAndRandomize(questions, QUESTIONS_PER_QUIZ);
-        currentQuestionIndex = 0;
-        score = 0;
+        quizSession = new QuizSession(topic, QuizRandomizer.pickAndRandomize(questions, QUESTIONS_PER_QUIZ));
 
         quizResultText.setText(null);
         quizCompleteContainer.setVisibility(View.GONE);
@@ -349,14 +342,13 @@ public class MainActivity extends AppCompatActivity {
         fileTilesGrid.setVisibility(View.GONE);
         quizContainer.setVisibility(View.VISIBLE);
 
-        showQuestion(currentQuestionIndex);
+        showQuestion();
     }
 
-    private void showQuestion(int index) {
-        QuizQuestion question = currentQuestions.get(index);
-        currentQuestionSubmitted = false;
+    private void showQuestion() {
+        QuizQuestion question = quizSession.getCurrentQuestion();
 
-        quizProgressText.setText(getString(R.string.quiz_progress, index + 1, currentQuestions.size()));
+        quizProgressText.setText(getString(R.string.quiz_progress, quizSession.getIndex() + 1, quizSession.size()));
         quizQuestionText.setText(question.question);
 
         quizOptionsGroup.clearCheck();
@@ -368,11 +360,11 @@ public class MainActivity extends AppCompatActivity {
 
         submitAnswerButton.setEnabled(false);
         nextQuestionButton.setEnabled(false);
-        nextQuestionButton.setText(index == currentQuestions.size() - 1 ? R.string.finish : R.string.next);
+        nextQuestionButton.setText(quizSession.isLastQuestion() ? R.string.finish : R.string.next);
     }
 
     private void submitAnswer() {
-        QuizQuestion question = currentQuestions.get(currentQuestionIndex);
+        QuizQuestion question = quizSession.getCurrentQuestion();
         int checkedId = quizOptionsGroup.getCheckedRadioButtonId();
         int selectedIndex = -1;
         for (int i = 0; i < quizOptionButtons.length; i++) {
@@ -382,9 +374,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        if (selectedIndex == question.correctIndex) {
-            score++;
-        }
+        quizSession.submitAnswer(selectedIndex);
 
         for (int i = 0; i < quizOptionButtons.length; i++) {
             RadioButton button = quizOptionButtons[i];
@@ -396,27 +386,26 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        currentQuestionSubmitted = true;
         submitAnswerButton.setEnabled(false);
         nextQuestionButton.setEnabled(true);
     }
 
     private void goToNextQuestion() {
-        if (currentQuestionIndex == currentQuestions.size() - 1) {
+        if (quizSession.isLastQuestion()) {
             finishQuiz();
         } else {
-            currentQuestionIndex++;
-            showQuestion(currentQuestionIndex);
+            quizSession.advance();
+            showQuestion();
         }
     }
 
     private void finishQuiz() {
-        lastQuizSummary = new QuizSummary(currentTopic, score, currentQuestions.size());
+        lastQuizSummary = quizSession.toSummary();
         quizContainer.setVisibility(View.GONE);
-        quizTopicText.setText(getString(R.string.quiz_topic, currentTopic));
+        quizTopicText.setText(getString(R.string.quiz_topic, lastQuizSummary.topic));
         scoreStarView.setScore(lastQuizSummary.score, lastQuizSummary.totalQuestions);
         quizCompleteContainer.setVisibility(View.VISIBLE);
-        currentQuestions = null;
+        quizSession = null;
     }
 
     private void backToHome() {
