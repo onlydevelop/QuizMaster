@@ -13,7 +13,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,6 +34,7 @@ public class QuizAgent {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Random random = new Random();
 
     public void generateQuiz(String apiKey, String documentText, Callback callback) {
         executor.execute(() -> {
@@ -129,12 +132,32 @@ public class QuizAgent {
                 for (int j = 0; j < choicesJson.length(); j++) {
                     choices.add(choicesJson.getString(j));
                 }
-                questions.add(new QuizQuestion(q.getString("question"), choices, q.getInt("correctIndex")));
+                questions.add(shuffleChoices(q.getString("question"), choices, q.getInt("correctIndex")));
             }
             return new QuizResult(topic, questions);
         } catch (Exception e) {
             throw new IOException("Failed to parse quiz response: " + e.getMessage(), e);
         }
+    }
+
+    private QuizQuestion shuffleChoices(String question, List<String> choices, int correctIndex) {
+        List<Integer> order = new ArrayList<>();
+        for (int i = 0; i < choices.size(); i++) {
+            order.add(i);
+        }
+        Collections.shuffle(order, random);
+
+        List<String> shuffledChoices = new ArrayList<>();
+        int newCorrectIndex = 0;
+        for (int i = 0; i < order.size(); i++) {
+            int originalIndex = order.get(i);
+            shuffledChoices.add(choices.get(originalIndex));
+            if (originalIndex == correctIndex) {
+                newCorrectIndex = i;
+            }
+        }
+
+        return new QuizQuestion(question, shuffledChoices, newCorrectIndex);
     }
 
     private String extractJsonObject(String text) {
