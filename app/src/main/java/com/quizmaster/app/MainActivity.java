@@ -9,6 +9,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.util.Log;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
@@ -55,6 +56,7 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "MainActivity";
     private static final int REDACT_VISIBLE_CHARS = 15;
     private static final int QUESTIONS_PER_QUIZ = 10;
 
@@ -208,8 +210,9 @@ public class MainActivity extends AppCompatActivity {
         }
         try {
             getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        } catch (SecurityException ignored) {
+        } catch (SecurityException e) {
             // Some providers don't support persistable permissions; re-picking will still work.
+            Log.w(TAG, "Provider does not support persistable URI permissions for " + uri, e);
         }
 
         selectedFileUri = uri;
@@ -233,8 +236,8 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             }
-        } catch (Exception ignored) {
-            // Fall back to the last path segment computed above.
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to query display name for " + uri + "; falling back to path segment", e);
         }
         return name;
     }
@@ -550,6 +553,7 @@ public class MainActivity extends AppCompatActivity {
 
             return FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", imageFile);
         } catch (IOException e) {
+            Log.e(TAG, "Failed to capture score screenshot for sharing", e);
             return null;
         }
     }
