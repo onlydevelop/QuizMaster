@@ -1,4 +1,4 @@
-APP_ID := com.testmaster.app
+APP_ID := com.quizmaster.app
 ACTIVITY := $(APP_ID)/.MainActivity
 GRADLE := ./gradlew
 
@@ -28,7 +28,7 @@ emulator:
 	@if adb devices | grep -q emulator; then \
 		echo "Emulator already running."; \
 	else \
-		nohup $(EMULATOR) -avd $(AVD_NAME) > /tmp/testmaster-emulator.log 2>&1 & disown; \
+		nohup $(EMULATOR) -avd $(AVD_NAME) > /tmp/quizmaster-emulator.log 2>&1 & disown; \
 		adb wait-for-device; \
 		echo "Waiting for emulator to finish booting..."; \
 		until [ "$$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do sleep 2; done; \

@@ -1,4 +1,4 @@
-package com.testmaster.app;
+package com.quizmaster.app;
 
 import java.util.ArrayList;
 import java.util.Collections;

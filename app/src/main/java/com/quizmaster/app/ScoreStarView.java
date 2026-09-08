@@ -1,4 +1,4 @@
-package com.testmaster.app;
+package com.quizmaster.app;
 
 import android.content.Context;
 import android.graphics.Canvas;

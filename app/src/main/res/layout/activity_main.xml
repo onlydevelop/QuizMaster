@@ -113,7 +113,7 @@
                             android:gravity="center"
                             android:textSize="16sp" />
 
-                        <com.testmaster.app.ScoreStarView
+                        <com.quizmaster.app.ScoreStarView
                             android:id="@+id/scoreStarView"
                             android:layout_width="220dp"
                             android:layout_height="220dp"

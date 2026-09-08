@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">TestMaster</string>
+    <string name="app_name">QuizMaster</string>
     <string name="menu_upload_file">Choose File</string>
     <string name="menu_api_key">Set API Key</string>
     <string name="api_key_dialog_title">Anthropic API Key</string>
@@ -21,7 +21,7 @@
     <string name="quiz_complete_title">Quiz complete!</string>
     <string name="quiz_topic">Topic: %1$s</string>
     <string name="share_score">Share Score</string>
-    <string name="share_score_text">I scored %1$d/%2$d on the TestMaster quiz on \"%3$s\"!</string>
+    <string name="share_score_text">I scored %1$d/%2$d on the QuizMaster quiz on \"%3$s\"!</string>
     <string name="share_score_chooser_title">Share your score</string>
     <string name="error_share_failed">Failed to prepare screenshot for sharing.</string>
     <string name="back_to_home">Back to Home</string>
