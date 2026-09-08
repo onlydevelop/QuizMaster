@@ -1,5 +1,7 @@
 package com.quizmaster.app;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class QuizQuestion {
@@ -10,7 +12,7 @@ public class QuizQuestion {
 
     public QuizQuestion(String question, List<String> choices, int correctIndex) {
         this.question = question;
-        this.choices = choices;
+        this.choices = Collections.unmodifiableList(new ArrayList<>(choices));
         this.correctIndex = correctIndex;
     }
 }

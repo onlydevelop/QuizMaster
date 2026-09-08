@@ -8,6 +8,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class QuizCacheStore {
@@ -26,7 +27,7 @@ public class QuizCacheStore {
             this.uri = uri;
             this.displayName = displayName;
             this.topic = topic;
-            this.questions = questions;
+            this.questions = Collections.unmodifiableList(new ArrayList<>(questions));
             this.textCacheKey = textCacheKey;
         }
     }
