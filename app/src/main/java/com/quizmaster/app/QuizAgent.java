@@ -13,6 +13,7 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.Callable;
@@ -60,14 +61,17 @@ public class QuizAgent {
                 ? documentText.substring(0, MAX_DOCUMENT_CHARS)
                 : documentText;
 
+        int choicesCount = QuizQuestion.CHOICES_COUNT;
+        String choicesSchema = String.join(", ", Collections.nCopies(choicesCount, "string"));
+
         String prompt = "Based only on the following text, generate exactly " + QUESTION_POOL_SIZE
                 + " multiple choice quiz questions covering the text as thoroughly as possible. "
-                + "Each question must have exactly 4 answer choices with exactly one correct answer. "
+                + "Each question must have exactly " + choicesCount + " answer choices with exactly one correct answer. "
                 + "Do not use any information outside the given text, and do not repeat the same question twice. "
                 + "Also come up with a short topic title (at most 6 words) summarizing what the text is about. "
                 + "Respond with ONLY a valid JSON object (no markdown, no commentary) with this shape: "
                 + "{\"topic\": string, \"questions\": [{\"question\": string, "
-                + "\"choices\": [string, string, string, string], \"correctIndex\": integer 0-3}, ...]}."
+                + "\"choices\": [" + choicesSchema + "], \"correctIndex\": integer 0-" + (choicesCount - 1) + "}, ...]}."
                 + "\n\nText:\n" + truncated;
 
         String responseText = callClaude(apiKey, prompt, 8000);

@@ -133,6 +133,7 @@ public class MainActivity extends AppCompatActivity {
         quizProgressText = findViewById(R.id.quizProgressText);
         quizQuestionText = findViewById(R.id.quizQuestionText);
         quizOptionsGroup = findViewById(R.id.quizOptionsGroup);
+        // One RadioButton per QuizQuestion.CHOICES_COUNT; kept in sync with activity_main.xml.
         quizOptionButtons = new RadioButton[]{
                 findViewById(R.id.quizOption0),
                 findViewById(R.id.quizOption1),
