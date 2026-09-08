@@ -1,13 +1,18 @@
 package com.testmaster.app;
 
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -19,11 +24,14 @@ import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.FileProvider;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.google.android.material.navigation.NavigationView;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -46,8 +54,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView quizResultText;
     private Uri selectedFileUri;
 
-    private android.widget.LinearLayout quizContainer;
-    private android.widget.LinearLayout quizCompleteContainer;
+    private LinearLayout quizContainer;
+    private LinearLayout quizCompleteContainer;
+    private LinearLayout quizCompleteCaptureContainer;
+    private TextView quizTopicText;
     private ScoreStarView scoreStarView;
     private TextView quizProgressText;
     private TextView quizQuestionText;
@@ -55,11 +65,15 @@ public class MainActivity extends AppCompatActivity {
     private RadioButton[] quizOptionButtons;
     private Button submitAnswerButton;
     private Button nextQuestionButton;
+    private Button shareScoreButton;
 
     private List<QuizQuestion> currentQuestions;
+    private String currentTopic;
     private int currentQuestionIndex;
     private boolean currentQuestionSubmitted;
     private int score;
+    private int lastTotalQuestions;
+    private String lastTopic;
 
     @Override
     protected void onResume() {
@@ -79,6 +93,8 @@ public class MainActivity extends AppCompatActivity {
 
         quizContainer = findViewById(R.id.quizContainer);
         quizCompleteContainer = findViewById(R.id.quizCompleteContainer);
+        quizCompleteCaptureContainer = findViewById(R.id.quizCompleteCaptureContainer);
+        quizTopicText = findViewById(R.id.quizTopicText);
         scoreStarView = findViewById(R.id.scoreStarView);
         quizProgressText = findViewById(R.id.quizProgressText);
         quizQuestionText = findViewById(R.id.quizQuestionText);
@@ -91,6 +107,8 @@ public class MainActivity extends AppCompatActivity {
         };
         submitAnswerButton = findViewById(R.id.btnSubmitAnswer);
         nextQuestionButton = findViewById(R.id.btnNextQuestion);
+        shareScoreButton = findViewById(R.id.btnShareScore);
+        shareScoreButton.setOnClickListener(v -> shareScore());
 
         quizOptionsGroup.setOnCheckedChangeListener((group, checkedId) ->
                 submitAnswerButton.setEnabled(!currentQuestionSubmitted && checkedId != -1));
@@ -192,12 +210,13 @@ public class MainActivity extends AppCompatActivity {
                 String documentText = readFileText(selectedFileUri);
                 quizAgent.generateQuiz(apiKey, documentText, new QuizAgent.Callback() {
                     @Override
-                    public void onSuccess(List<QuizQuestion> questions) {
-                        currentQuestions = questions;
+                    public void onSuccess(QuizResult result) {
+                        currentQuestions = result.questions;
+                        currentTopic = result.topic;
                         currentQuestionIndex = 0;
                         score = 0;
                         quizResultText.setText(null);
-                        quizContainer.setVisibility(android.view.View.VISIBLE);
+                        quizContainer.setVisibility(View.VISIBLE);
                         generateQuizButton.setEnabled(true);
                         showQuestion(currentQuestionIndex);
                     }
@@ -276,11 +295,47 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void finishQuiz() {
-        int totalQuestions = currentQuestions.size();
-        quizContainer.setVisibility(android.view.View.GONE);
-        scoreStarView.setScore(score, totalQuestions);
-        quizCompleteContainer.setVisibility(android.view.View.VISIBLE);
+        lastTotalQuestions = currentQuestions.size();
+        lastTopic = currentTopic;
+        quizContainer.setVisibility(View.GONE);
+        quizTopicText.setText(getString(R.string.quiz_topic, currentTopic));
+        scoreStarView.setScore(score, lastTotalQuestions);
+        quizCompleteContainer.setVisibility(View.VISIBLE);
         currentQuestions = null;
+    }
+
+    private void shareScore() {
+        Uri screenshotUri = captureViewToUri(quizCompleteCaptureContainer);
+        if (screenshotUri == null) {
+            Toast.makeText(this, R.string.error_share_failed, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("image/png");
+        shareIntent.putExtra(Intent.EXTRA_STREAM, screenshotUri);
+        shareIntent.putExtra(Intent.EXTRA_TEXT, getString(R.string.share_score_text, score, lastTotalQuestions, lastTopic));
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(Intent.createChooser(shareIntent, getString(R.string.share_score_chooser_title)));
+    }
+
+    private Uri captureViewToUri(View view) {
+        try {
+            Bitmap bitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            view.draw(canvas);
+
+            File imagesDir = new File(getCacheDir(), "images");
+            imagesDir.mkdirs();
+            File imageFile = new File(imagesDir, "quiz_score.png");
+            try (FileOutputStream out = new FileOutputStream(imageFile)) {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            }
+
+            return FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", imageFile);
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     private SpannableString withSuffix(String text, String suffix, int color) {

@@ -21,7 +21,7 @@ import java.util.concurrent.Executors;
 public class QuizAgent {
 
     public interface Callback {
-        void onSuccess(List<QuizQuestion> questions);
+        void onSuccess(QuizResult result);
         void onError(Exception e);
     }
 
@@ -36,15 +36,15 @@ public class QuizAgent {
     public void generateQuiz(String apiKey, String documentText, Callback callback) {
         executor.execute(() -> {
             try {
-                List<QuizQuestion> questions = requestQuiz(apiKey, documentText);
-                mainHandler.post(() -> callback.onSuccess(questions));
+                QuizResult result = requestQuiz(apiKey, documentText);
+                mainHandler.post(() -> callback.onSuccess(result));
             } catch (Exception e) {
                 mainHandler.post(() -> callback.onError(e));
             }
         });
     }
 
-    private List<QuizQuestion> requestQuiz(String apiKey, String documentText) throws IOException {
+    private QuizResult requestQuiz(String apiKey, String documentText) throws IOException {
         String truncated = documentText.length() > MAX_DOCUMENT_CHARS
                 ? documentText.substring(0, MAX_DOCUMENT_CHARS)
                 : documentText;
@@ -52,9 +52,11 @@ public class QuizAgent {
         String prompt = "Based only on the following text, generate exactly 10 multiple choice quiz questions. "
                 + "Each question must have exactly 4 answer choices with exactly one correct answer. "
                 + "Do not use any information outside the given text. "
-                + "Respond with ONLY a valid JSON array (no markdown, no commentary) where each element has "
-                + "this shape: {\"question\": string, \"choices\": [string, string, string, string], "
-                + "\"correctIndex\": integer 0-3}.\n\nText:\n" + truncated;
+                + "Also come up with a short topic title (at most 6 words) summarizing what the text is about. "
+                + "Respond with ONLY a valid JSON object (no markdown, no commentary) with this shape: "
+                + "{\"topic\": string, \"questions\": [{\"question\": string, "
+                + "\"choices\": [string, string, string, string], \"correctIndex\": integer 0-3}, ...]}."
+                + "\n\nText:\n" + truncated;
 
         JSONObject body;
         try {
@@ -103,7 +105,7 @@ public class QuizAgent {
         }
     }
 
-    private List<QuizQuestion> parseQuiz(String responseBody) throws IOException {
+    private QuizResult parseQuiz(String responseBody) throws IOException {
         try {
             JSONObject response = new JSONObject(responseBody);
             JSONArray content = response.getJSONArray("content");
@@ -115,7 +117,9 @@ public class QuizAgent {
                 }
             }
 
-            JSONArray questionsJson = new JSONArray(extractJsonArray(text.toString()));
+            JSONObject quizJson = new JSONObject(extractJsonObject(text.toString()));
+            String topic = quizJson.getString("topic");
+            JSONArray questionsJson = quizJson.getJSONArray("questions");
 
             List<QuizQuestion> questions = new ArrayList<>();
             for (int i = 0; i < questionsJson.length(); i++) {
@@ -127,17 +131,17 @@ public class QuizAgent {
                 }
                 questions.add(new QuizQuestion(q.getString("question"), choices, q.getInt("correctIndex")));
             }
-            return questions;
+            return new QuizResult(topic, questions);
         } catch (Exception e) {
             throw new IOException("Failed to parse quiz response: " + e.getMessage(), e);
         }
     }
 
-    private String extractJsonArray(String text) {
-        int start = text.indexOf('[');
-        int end = text.lastIndexOf(']');
+    private String extractJsonObject(String text) {
+        int start = text.indexOf('{');
+        int end = text.lastIndexOf('}');
         if (start == -1 || end == -1 || end < start) {
-            throw new IllegalArgumentException("No JSON array found in response");
+            throw new IllegalArgumentException("No JSON object found in response");
         }
         return text.substring(start, end + 1);
     }

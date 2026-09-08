@@ -62,23 +62,49 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:gravity="center_horizontal"
-                    android:paddingTop="32dp"
                     android:visibility="gone">
 
-                    <TextView
-                        android:id="@+id/quizCompleteTitle"
+                    <LinearLayout
+                        android:id="@+id/quizCompleteCaptureContainer"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center"
-                        android:text="@string/quiz_complete_title"
-                        android:textSize="28sp"
-                        android:textStyle="bold" />
+                        android:orientation="vertical"
+                        android:gravity="center_horizontal"
+                        android:background="@android:color/white"
+                        android:paddingTop="32dp"
+                        android:paddingBottom="16dp">
 
-                    <com.testmaster.app.ScoreStarView
-                        android:id="@+id/scoreStarView"
-                        android:layout_width="220dp"
-                        android:layout_height="220dp"
-                        android:layout_marginTop="24dp" />
+                        <TextView
+                            android:id="@+id/quizCompleteTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center"
+                            android:text="@string/quiz_complete_title"
+                            android:textSize="28sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/quizTopicText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:gravity="center"
+                            android:textSize="16sp" />
+
+                        <com.testmaster.app.ScoreStarView
+                            android:id="@+id/scoreStarView"
+                            android:layout_width="220dp"
+                            android:layout_height="220dp"
+                            android:layout_marginTop="24dp" />
+
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btnShareScore"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="24dp"
+                        android:text="@string/share_score" />
 
                 </LinearLayout>
 
