@@ -16,18 +16,18 @@ public class QuizCacheStore {
     private static final String KEY_CACHE = "cache";
 
     public static class Entry {
+        public final String contentKey;
         public final String uri;
         public final String displayName;
         public final String topic;
         public final List<QuizQuestion> questions;
-        public final String textCacheKey;
 
-        public Entry(String uri, String displayName, String topic, List<QuizQuestion> questions, String textCacheKey) {
+        public Entry(String contentKey, String uri, String displayName, String topic, List<QuizQuestion> questions) {
+            this.contentKey = contentKey;
             this.uri = uri;
             this.displayName = displayName;
             this.topic = topic;
             this.questions = Collections.unmodifiableList(new ArrayList<>(questions));
-            this.textCacheKey = textCacheKey;
         }
     }
 
@@ -44,26 +44,32 @@ public class QuizCacheStore {
         return entries;
     }
 
-    public static Entry find(Context context, String uri) {
+    /**
+     * Looks up a cached question pool by the file's content identity
+     * (see MainActivity.computeContentHash), not by picker URI - the
+     * same physical file can come back from the document picker under
+     * a different URI depending on how it was navigated to.
+     */
+    public static Entry find(Context context, String contentKey) {
         for (Entry entry : getAll(context)) {
-            if (entry.uri.equals(uri)) {
+            if (entry.contentKey.equals(contentKey)) {
                 return entry;
             }
         }
         return null;
     }
 
-    public static void save(Context context, String uri, String displayName, String topic,
-                             List<QuizQuestion> questions, String textCacheKey) {
+    public static void save(Context context, String contentKey, String uri, String displayName, String topic,
+                             List<QuizQuestion> questions) {
         List<Entry> entries = getAll(context);
-        entries.removeIf(e -> e.uri.equals(uri));
-        entries.add(0, new Entry(uri, displayName, topic, questions, textCacheKey));
+        entries.removeIf(e -> e.contentKey.equals(contentKey));
+        entries.add(0, new Entry(contentKey, uri, displayName, topic, questions));
         persist(context, entries);
     }
 
-    public static void delete(Context context, String uri) {
+    public static void delete(Context context, String contentKey) {
         List<Entry> entries = getAll(context);
-        entries.removeIf(e -> e.uri.equals(uri));
+        entries.removeIf(e -> e.contentKey.equals(contentKey));
         persist(context, entries);
     }
 
@@ -90,11 +96,11 @@ public class QuizCacheStore {
         }
 
         JSONObject json = new JSONObject();
+        json.put("contentKey", entry.contentKey);
         json.put("uri", entry.uri);
         json.put("displayName", entry.displayName);
         json.put("topic", entry.topic);
         json.put("questions", questionsJson);
-        json.put("textCacheKey", entry.textCacheKey);
         return json;
     }
 
@@ -110,7 +116,7 @@ public class QuizCacheStore {
             }
             questions.add(new QuizQuestion(qJson.getString("question"), choices, qJson.getInt("correctIndex")));
         }
-        return new Entry(json.getString("uri"), json.getString("displayName"), json.getString("topic"), questions,
-                json.optString("textCacheKey", null));
+        return new Entry(json.getString("contentKey"), json.getString("uri"), json.getString("displayName"),
+                json.getString("topic"), questions);
     }
 }

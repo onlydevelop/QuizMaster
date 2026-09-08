@@ -299,10 +299,8 @@ public class MainActivity extends AppCompatActivity {
                 .setTitle(R.string.delete_quiz_title)
                 .setMessage(getString(R.string.delete_quiz_message, entry.displayName))
                 .setPositiveButton(R.string.delete, (dialog, which) -> {
-                    QuizCacheStore.delete(this, entry.uri);
-                    if (entry.textCacheKey != null) {
-                        DocumentTextCache.delete(this, entry.textCacheKey);
-                    }
+                    QuizCacheStore.delete(this, entry.contentKey);
+                    DocumentTextCache.delete(this, entry.contentKey);
                     refreshFileTiles();
                 })
                 .setNegativeButton(android.R.string.cancel, null)
@@ -319,44 +317,54 @@ public class MainActivity extends AppCompatActivity {
         String fileDisplayName = selectedFileDisplayName;
         Uri fileUri = selectedFileUri;
 
-        QuizCacheStore.Entry existing = QuizCacheStore.find(this, fileUriString);
-        if (existing != null) {
-            startQuizSession(existing.topic, existing.questions);
-            return;
-        }
-
-        String mimeType = getContentResolver().getType(selectedFileUri);
-        boolean isPdf = "application/pdf".equals(mimeType);
-
         generateQuizButton.setEnabled(false);
         quizContainer.setVisibility(View.GONE);
         quizCompleteContainer.setVisibility(View.GONE);
         quizResultText.setText(R.string.generating_quiz);
 
-        if (!isPdf) {
-            fileReadExecutor.execute(() -> {
+        fileReadExecutor.execute(() -> {
+            String contentKey;
+            try {
+                contentKey = computeContentHash(fileUri);
+            } catch (IOException e) {
+                runOnUiThread(() -> {
+                    quizResultText.setText(getString(R.string.error_quiz_generation_failed, e.getMessage()));
+                    generateQuizButton.setEnabled(true);
+                });
+                return;
+            }
+
+            QuizCacheStore.Entry existing = QuizCacheStore.find(this, contentKey);
+            if (existing != null) {
+                runOnUiThread(() -> {
+                    generateQuizButton.setEnabled(true);
+                    startQuizSession(existing.topic, existing.questions);
+                });
+                return;
+            }
+
+            String finalContentKey = contentKey;
+            boolean isPdf = "application/pdf".equals(getContentResolver().getType(fileUri));
+            if (!isPdf) {
                 try {
                     String documentText = readFileText(fileUri);
-                    runOnUiThread(() -> runQuizGeneration(apiKey, documentText, fileUriString, fileDisplayName, null));
+                    runOnUiThread(() -> requestQuestions(apiKey, documentText, finalContentKey, fileUriString, fileDisplayName));
                 } catch (IOException e) {
                     runOnUiThread(() -> {
                         quizResultText.setText(getString(R.string.error_quiz_generation_failed, e.getMessage()));
                         generateQuizButton.setEnabled(true);
                     });
                 }
-            });
-            return;
-        }
+                return;
+            }
 
-        fileReadExecutor.execute(() -> {
+            String cachedText = DocumentTextCache.get(this, contentKey);
+            if (cachedText != null) {
+                runOnUiThread(() -> requestQuestions(apiKey, cachedText, finalContentKey, fileUriString, fileDisplayName));
+                return;
+            }
+
             try {
-                String textCacheKey = computeContentHash(fileUri);
-                String cachedText = DocumentTextCache.get(this, textCacheKey);
-                if (cachedText != null) {
-                    runOnUiThread(() -> runQuizGeneration(apiKey, cachedText, fileUriString, fileDisplayName, textCacheKey));
-                    return;
-                }
-
                 runOnUiThread(() -> quizResultText.setText(R.string.extracting_pdf_text));
                 String rawText = extractPdfText(fileUri);
                 runOnUiThread(() -> {
@@ -364,8 +372,8 @@ public class MainActivity extends AppCompatActivity {
                     quizAgent.cleanDocumentText(apiKey, rawText, new QuizAgent.Callback<String>() {
                         @Override
                         public void onSuccess(String cleanedText) {
-                            DocumentTextCache.save(MainActivity.this, textCacheKey, cleanedText);
-                            runQuizGeneration(apiKey, cleanedText, fileUriString, fileDisplayName, textCacheKey);
+                            DocumentTextCache.save(MainActivity.this, finalContentKey, cleanedText);
+                            requestQuestions(apiKey, cleanedText, finalContentKey, fileUriString, fileDisplayName);
                         }
 
                         @Override
@@ -384,13 +392,13 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void runQuizGeneration(String apiKey, String documentText, String fileUriString, String fileDisplayName,
-                                    String textCacheKey) {
+    private void requestQuestions(String apiKey, String documentText, String contentKey, String fileUriString,
+                                   String fileDisplayName) {
         quizAgent.generateQuiz(apiKey, documentText, new QuizAgent.Callback<QuizResult>() {
             @Override
             public void onSuccess(QuizResult result) {
-                QuizCacheStore.save(MainActivity.this, fileUriString, fileDisplayName,
-                        result.topic, result.questions, textCacheKey);
+                QuizCacheStore.save(MainActivity.this, contentKey, fileUriString, fileDisplayName,
+                        result.topic, result.questions);
                 generateQuizButton.setEnabled(true);
                 startQuizSession(result.topic, result.questions);
             }
