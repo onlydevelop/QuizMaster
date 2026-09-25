@@ -77,3 +77,9 @@ All source is in `app/src/main/java/com/quizmaster/app/`:
 - The model is `claude-haiku-4-5-20251001`, set in `QuizAgent.MODEL`.
 - Documents are truncated to 20,000 characters before quiz generation. Raw PDF text is truncated to 60,000 characters before cleanup.
 - The number of choices per question (`QuizQuestion.CHOICES_COUNT`) is also hardcoded in `activity_main.xml` and in `MainActivity`. If you change it, update all three places.
+
+## License
+
+Copyright 2026 Dipanjan Bhowmik
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
